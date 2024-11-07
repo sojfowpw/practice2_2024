@@ -3,6 +3,7 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <string.h>
+#include <thread>
 
 using namespace std;
 
@@ -18,7 +19,7 @@ int main() {
     sockaddr_in server_address;
     server_address.sin_family = AF_INET;
     server_address.sin_addr.s_addr = INADDR_ANY;
-    server_address.sin_port = htons(8081);
+    server_address.sin_port = htons(7432);
 
     if (bind(server_fd, (struct sockaddr*)&server_address, sizeof(server_address)) < 0) {
         cerr << "Bind failed\n";
@@ -34,36 +35,41 @@ int main() {
 
     cout << "Waiting for incoming connections...\n";
 
-    sockaddr_in client_address;
-    socklen_t client_address_lenght = sizeof(client_address);
-    int new_socket = accept(server_fd, (struct sockaddr*)&client_address, &client_address_lenght);
-    if (new_socket < 0) {
-        cerr << "Accept failed\n";
-        close(server_fd);
-        return 1;
-    }
-
-    cout << "Connection accepted\n";
-
-    char buffer[1024] = {0};
     while (true) {
-        int valread = read(new_socket, buffer, 1024);
-        if (valread <= 0) {
-            cerr << "Client disconnected\n";
-            break;
+        sockaddr_in client_address;
+        socklen_t client_address_length = sizeof(client_address);
+        int new_socket = accept(server_fd, (struct sockaddr*)&client_address, &client_address_length);
+        if (new_socket < 0) {
+            cerr << "Accept failed\n";
+            close(server_fd);
+            continue;
         }
 
-        cout << "Message received: " << buffer;
+        cout << "Connection accepted\n";
 
-        for (int i = 0; i < valread; i++) {
-            buffer[i] = toupper(buffer[i]);
+        thread t([new_socket] () {
+            char buffer[1024] = {0};
+        while (true) {
+            int valread = read(new_socket, buffer, 1024);
+            if (valread <= 0) {
+                cerr << "Client disconnected\n";
+                break;
+            }
+
+            cout << "Message received: " << buffer;
+
+            for (int i = 0; i < valread; i++) {
+                buffer[i] = toupper(buffer[i]);
+            }
+
+            send(new_socket, buffer, valread, 0);
+            memset(buffer, 0, sizeof(buffer));
         }
 
-        send(new_socket, buffer, valread, 0);
-        memset(buffer, 0, sizeof(buffer));
+        close(new_socket);
+        });
+        t.detach();
     }
-
-    close(new_socket);
     close(server_fd);
     return 0;
 }
