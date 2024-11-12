@@ -1,75 +1,71 @@
 #include <iostream>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <unistd.h>
+#include <sys/socket.h> // функции для работы с сокетами
+#include <netinet/in.h> // структуры данных для портов
+#include <unistd.h> // функции для работы с системными вызовами
 #include <string.h>
 #include <thread>
 
 using namespace std;
 
 int main() {
-    cout << "Launching server...\n";
-    
-    int server_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (server_fd == -1) {
-        cerr << "Could not create socket\n";
+    cout << "Загрузка сервера\n";
+    int serverSocket = socket(AF_INET, SOCK_STREAM, 0); // создание сокета для сервера
+    // AF_INET сокет используется для работы с IPv4 - протокол передачи информации внутри сети интернет
+    // SOCK_STREAM - сокет типа TCP
+    // использование протокола по умолчанию для данного типа сокета
+    if (serverSocket == -1) {
+        cerr << "Не удалось создать сокет\n";
         return 1;
     }
 
-    sockaddr_in server_address;
-    server_address.sin_family = AF_INET;
-    server_address.sin_addr.s_addr = INADDR_ANY;
-    server_address.sin_port = htons(7432);
-
-    if (bind(server_fd, (struct sockaddr*)&server_address, sizeof(server_address)) < 0) {
-        cerr << "Bind failed\n";
-        close(server_fd);
+    sockaddr_in serverAddress; // определение адреса сервера, тип данных для хранения адреса сокета
+    serverAddress.sin_family = AF_INET; // семейство адресов IPv4
+    serverAddress.sin_addr.s_addr = INADDR_ANY; // 32 битный IPv4
+    serverAddress.sin_port = htons(7432); // преобразует номер порта 7432 из хостового порядка байтов в сетевой порядок байтов
+    // привязываем сокет к указанному адресу и порту
+    if (bind(serverSocket, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) < 0) { // (struct sockaddr*)&serverAddress - указатель на структуру sockaddr_in
+        cerr << "Связь не удалась\n";
+        close(serverSocket);
         return 1;
     }
-
-    if (listen(server_fd, 3) < 0) {
-        cerr << "Listen failed\n";
-        close(server_fd);
+    // прослушивание входящих соединений
+    if (listen(serverSocket, 3) < 0) { // 3 максимальное количество соединений в очереди
+        cerr << "Прослушивание не удалось\n";
+        close(serverSocket);
         return 1;
     }
+    cout << "Ожидание входящих соединений\n";
 
-    cout << "Waiting for incoming connections...\n";
-
-    while (true) {
-        sockaddr_in client_address;
-        socklen_t client_address_length = sizeof(client_address);
-        int new_socket = accept(server_fd, (struct sockaddr*)&client_address, &client_address_length);
-        if (new_socket < 0) {
-            cerr << "Accept failed\n";
-            close(server_fd);
+    while (true) { // принятие соединений
+        sockaddr_in clientAddress;
+        socklen_t clientAddressLength = sizeof(clientAddress); // размер 
+        int newSocket = accept(serverSocket, (struct sockaddr*)&clientAddress, &clientAddressLength); // принятие клиента
+        if (newSocket < 0) {
+            cerr << "Соединение не принято\n";
+            close(serverSocket);
             continue;
         }
+        cout << "Соединение принято\n";
 
-        cout << "Connection accepted\n";
-
-        thread t([new_socket] () {
-            char buffer[1024] = {0};
-        while (true) {
-            int valread = read(new_socket, buffer, 1024);
-            if (valread <= 0) {
-                cerr << "Client disconnected\n";
-                break;
+        thread t([newSocket] () { // новый поток для соединения
+            char buffer[1024] = {0}; // буфер 1024 байта, инициализированный 0
+            while (true) {
+                int valread = read(newSocket, buffer, 1024); // чтение данных в буфер, valread - количество байт
+                if (valread <= 0) {
+                    cerr << "Клиент отсоединился\n";
+                    break;
+                }
+                cout << "Сообщение получено: " << buffer; // вывод сообщения клиента
+                for (int i = 0; i < valread; i++) { // проходимся по байтам сообщения
+                    buffer[i] = toupper(buffer[i]);
+                }
+                send(newSocket, buffer, valread, 0); // отправка преобразованного сообщения обратно клиенту
+                memset(buffer, 0, sizeof(buffer)); // очистка буфера, заполнение его 0
             }
-
-            cout << "Message received: " << buffer;
-
-            for (int i = 0; i < valread; i++) {
-                buffer[i] = toupper(buffer[i]);
-            }
-
-            send(new_socket, buffer, valread, 0);
-            memset(buffer, 0, sizeof(buffer));
-        }
-
-        close(new_socket);
+        close(newSocket);
         });
-        t.detach();
+        t.detach(); // отсоединяет поток, чтобы он работал независимо от основного потока
     }
-    close(server_fd);
+    close(serverSocket);
     return 0;
 }
