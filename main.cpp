@@ -99,12 +99,9 @@ int main() {
                     cerr << "Клиент отсоединился\n";
                     break;
                 }
-                cout << "Сообщение получено: "; // вывод сообщения клиента
-                string command(buffer, valread); // Преобразуем буфер в строку
-                if (command.empty()) { // если пустая строка
-                    continue;
-                }
-                cout << command << endl;
+                string command; // Преобразуем буфер в строку
+                command = string(buffer, valread);
+                cout << "Сообщение получено: " << command; // вывод сообщения клиента
                 Commands cmd = stringToCommand(command); // обработка введённой команды
                 switch (cmd) {
                     case Commands::EXIT: // выход
@@ -118,6 +115,7 @@ int main() {
                         break;
                     case Commands::SELECT: // выбор
                         select(command, tjs);
+                        cout << "Select выполнен\n";
                         break;
                     case Commands::ERR:
                         cerr << "Неизвестная команда.\n";
