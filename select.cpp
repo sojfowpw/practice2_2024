@@ -230,7 +230,7 @@ void select(const string& command, tableJson& tjs) { // выбор данных
         splitDot(word, t2cond, c2cond, tjs);
     }
     else {
-        s1 = ignoreQuotes(word);
+        s2 = ignoreQuotes(word);
     }
     if (oper == "AND") {
         if (checkCond(tjs, t1, c1, t1cond, c1cond, s1) == true && checkCond(tjs, t2, c2, t2cond, c2cond, s2) == true) {

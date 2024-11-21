@@ -119,7 +119,6 @@ int main() {
                         break;
                     case Commands::SELECT: // выбор
                         select(command, tjs);
-                        cout << "Select выполнен\n";
                         break;
                     case Commands::ERR:
                         cerr << "Неизвестная команда.\n";
