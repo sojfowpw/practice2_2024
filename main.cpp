@@ -15,6 +15,7 @@
 #include <string.h>
 #include <thread>
 #include <sstream>
+#include <mutex>
 
 using namespace std;
 
@@ -48,6 +49,7 @@ Commands stringToCommand(const string& cmd) { // определение кома
 }
 
 int main() {
+    mutex mtx;
     tableJson tjs;
     parsing(tjs);
     cout << "\n\n";
@@ -91,7 +93,7 @@ int main() {
         }
         cout << "Соединение принято\n";
 
-        thread t([newSocket, &tjs] () { // новый поток для соединения
+        thread t([newSocket, &tjs, &mtx] () { // новый поток для соединения
             char buffer[1024] = {0}; // буфер 1024 байта, инициализированный 0
             while (true) {
                 int valread = read(newSocket, buffer, 1024); // чтение данных в буфер, valread - количество байт
@@ -101,6 +103,8 @@ int main() {
                 }
                 string command; // Преобразуем буфер в строку
                 command = string(buffer, valread);
+                lock_guard<mutex> lock(mtx);
+                this_thread::sleep_for(chrono::seconds(5));
                 cout << "Сообщение получено: " << command; // вывод сообщения клиента
                 Commands cmd = stringToCommand(command); // обработка введённой команды
                 switch (cmd) {
